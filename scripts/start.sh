@@ -42,6 +42,10 @@ do
 done
 
 ADAPTER="${NET_ADAPTER:=eth0}"
+TUN_PORT=${HOST_TUN_PORT:-1194}
+TUN_PROTO="${HOST_TUN_PROTO:-udp}"
+IPV4_CIDR="${OVPN_IP_NET:-10.8.0.0/24}"
+
 
 mkdir -p /dev/net
 
@@ -51,22 +55,27 @@ if [ ! -c /dev/net/tun ]; then
 fi
 
 # Replace variables in ovpn config file
-sed -i 's/%HOST_TUN_PROTOCOL%/'"$HOST_TUN_PROTOCOL"'/g' /etc/openvpn/server.conf
+sed -i 's/%HOST_TUN_PROTOCOL%/'"$TUN_PROTO"'/g' /etc/openvpn/server.conf
+sed -i 's/%TUN_PORT%/'"$TUN_PORT"'/g' /etc/openvpn/server.conf
 
-# Allow ${HOST_TUN_PROTOCOL} traffic on port 1194.
-iptables -A INPUT -i $ADAPTER -p ${HOST_TUN_PROTOCOL} -m state --state NEW,ESTABLISHED --dport 1194 -j ACCEPT
-iptables -A OUTPUT -o $ADAPTER -p ${HOST_TUN_PROTOCOL} -m state --state ESTABLISHED --sport 1194 -j ACCEPT
+# write server network by IPV4_CIDR into server.conf
+IPV4_SERVER="server $(ipcalc -4 -a $IPV4_CIDR | sed  's/^ADDRESS*=//') $(ipcalc  -4 -m $IPV4_CIDR  | sed  's/^NETMASK*=//')"
+sed  -i "s/^server.*/$IPV4_SERVER/g" /etc/openvpn/server.conf
+
+# Allow UDP traffic on port 1194 or set environment variables HOST_TUN_PROTO and HOST_TUN_PORT.
+iptables -A INPUT -i $ADAPTER -p $TUN_PROTO -m state --state NEW,ESTABLISHED --dport $TUN_PORT -j ACCEPT
+iptables -A OUTPUT -o $ADAPTER -p $TUN_PROTO -m state --state ESTABLISHED --sport $TUN_PORT -j ACCEPT
 
 # Allow traffic on the TUN interface.
 iptables -A INPUT -i tun0 -j ACCEPT
 iptables -A FORWARD -i tun0 -j ACCEPT
 iptables -A OUTPUT -o tun0 -j ACCEPT
 
-# Allow forwarding traffic only from the VPN.
-iptables -A FORWARD -i tun0 -o $ADAPTER -s 10.8.0.0/24 -j ACCEPT
+# Allow forwarding traffic only from the VPN (set environment variables OVPN_IP_NET).
+iptables -A FORWARD -i tun0 -o $ADAPTER -s $IPV4_CIDR -j ACCEPT
 iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $ADAPTER -j MASQUERADE
+iptables -t nat -A POSTROUTING -s $IPV4_CIDR -o $ADAPTER -j MASQUERADE
 
 cd "$APP_PERSIST_DIR"
 
@@ -111,16 +120,6 @@ EOF4
 
     touch $LOCKFILE
 fi
-
-# Set default value to IPV4_CIDR if it was not set from environment
-if [ -z "$IPV4_CIDR" ]
-then
-    IPV4_CIDR='10.8.0.0/24'
-fi
-
-# write server network by IPV4_CIDR into server.conf
-IPV4_SERVER="server $(ipcalc -4 -a $IPV4_CIDR | sed  's/^ADDRESS*=//') $(ipcalc  -4 -m $IPV4_CIDR  | sed  's/^NETMASK*=//')"
-sed  -i "s/^server.*/$IPV4_SERVER/g" /etc/openvpn/server.conf
 
 # Copy server keys and certificates
 cp pki/dh.pem pki/ca.crt pki/issued/MyReq.crt pki/private/MyReq.key pki/crl.pem ta.key /etc/openvpn
