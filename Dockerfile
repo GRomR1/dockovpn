@@ -21,7 +21,7 @@ COPY scripts .
 COPY config ./config
 COPY VERSION ./config
 
-RUN apk add --no-cache openvpn easy-rsa bash netcat-openbsd zip curl dumb-init && \
+RUN apk add --no-cache iptables openvpn easy-rsa bash netcat-openbsd zip curl dumb-init && \
     ln -s /usr/share/easy-rsa/easyrsa /usr/bin/easyrsa && \
     mkdir -p ${APP_PERSIST_DIR} && \
     cd ${APP_PERSIST_DIR} && \
