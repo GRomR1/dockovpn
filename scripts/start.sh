@@ -54,18 +54,22 @@ if [ ! -c /dev/net/tun ]; then
     mknod /dev/net/tun c 10 200
 fi
 
-# 读取环境变量 ROUTERS
+# Read environment variable ROUTERS
 routers_content=${ROUTERS:-""}
-# 初始化拼接字符串
+# Initialize concatenated string
 output_routers=""
 
-# 检查 routers_content 内容是否为空
+# Check if routers_content is empty
 if [[ -n "$routers_content" ]]; then
-  # 使用逗号分割内容并进行拼接
+  # Use commas to split the content and concatenate
   IFS=',' read -ra ADDR <<< "$routers_content"
   for item in "${ADDR[@]}"; do
     output_routers+="push \"route $item 255.255.255.0 vpn_gateway\"\n"
   done
+fi
+
+if [ -f ./addroutes.sh ]; then
+  source ./addroutes.sh
 fi
 
 # Replace variables in ovpn config file

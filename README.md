@@ -197,6 +197,14 @@ There's a possibility to persist generated files in volume storage. Run docker w
 -v openvpn_conf:/opt/Dockovpn_data
 ```
 
+## Scripts configuration
+
+There's a possibility to maps scripts files locally stored to container filesystem, i.e. files includes commands to route some networks. Run docker with
+
+```bash
+-v ./dockovpn/scripts/addroutes.sh:/opt/Dockovpn/addroutes.sh
+```
+
 ## Alternative way. Run with docker-compose
 
 Sometimes it is more convenient to use [docker-compose](https://docs.docker.com/compose/).
