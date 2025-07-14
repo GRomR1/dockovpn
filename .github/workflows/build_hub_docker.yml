@@ -2,10 +2,10 @@ name: Docker Multi-Platform Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
   schedule:
     - cron: '0 2 * * 1'  # Run weekly to check for Alpine updates
   workflow_dispatch:
